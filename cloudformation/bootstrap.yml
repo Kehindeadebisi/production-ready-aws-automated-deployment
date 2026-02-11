@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  An IAM Identity Provider to enable deployments from GitHub Action Runners using the GitHub OIDC Provider
+Resources:
+  GitHubOidc:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+      Tags:
+        - Key: "project"
+          Value: "fincra3"
+
+  GitHubDeploymentRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRoleWithWebIdentity
+            Principal:
+              Federated: !Ref GitHubOidc
+            Condition:
+              StringLike:
+                token.actions.githubusercontent.com:sub: [
+                    "repo:FincraNG/fincra-profile:*"
+                    ]
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser'
+      Path: /
+      RoleName: fincra3-github-deployment-role
+      Tags:
+        - Key: "deployer"
+          Value: "org"
+        - Key: "project"
+          Value: "fincra3"
+
+  GitHubExecuteRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRoleWithWebIdentity
+            Principal:
+              Federated: !Ref GitHubOidc
+            Condition:
+              StringLike:
+                token.actions.githubusercontent.com:sub: [
+                    "repo:FincraNG/FincraNG/terraform-sandbox:*",
+                    ]
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'
+      Path: /
+      RoleName: fincra3-github-execution-role
+      Tags:
+        - Key: "deployer"
+          Value: "org"
+        - Key: "project"
+          Value: "fincra3"
+
+  TerraformS3:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Sub fincra3-${AWS::AccountId}-${AWS::Region}-tfstate
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      VersioningConfiguration:
+        Status: "Enabled"
+      Tags:
+        - Key: "project"
+          Value: "fincra3"
+
+  TerraformS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TerraformS3
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - "s3:*"
+            Effect: Deny
+            Resource:
+              - !GetAtt TerraformS3.Arn
+              - !Sub ${TerraformS3.Arn}/*
+            Principal: '*'
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+  DynamoDbTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub fincra3-${AWS::AccountId}-${AWS::Region}-lock-table
+      AttributeDefinitions:
+        - AttributeName: LockID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: LockID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: "project"
+          Value: "fincra3"
+
+Outputs:
+  GitHubOIDCProvider:
+    Description: The GitHub OIDC Provider
+    Value: !Ref GitHubOidc
+    Export:
+      Name: GitHubOidcProvider
