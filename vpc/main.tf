@@ -1,13 +1,16 @@
+
+
+
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.1.2"
 
   name = "${var.environment}-vpc"
-  cidr = "10.0.0.0/16"
+  cidr = var.vpc_cidr
 
   azs             = ["eu-north-1a", "eu-north-1b"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+  private_subnets = var.private_subnets
+  public_subnets  = var.public_subnets
 
   enable_nat_gateway = true
   single_nat_gateway = true
@@ -15,10 +18,7 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    Environment = var.environment
-    managedBy   = "terraform"
-  }
+  tags = var.common_tags
 }
 
 resource "aws_security_group" "sandbox" {
@@ -41,8 +41,9 @@ resource "aws_security_group" "sandbox" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name        = "sandbox-sg"
-    Environment = var.environment
-  }
+  tags = var.common_tags
 }
+
+
+
+

@@ -1,3 +1,4 @@
+
 output "vpc_id" {
   description = "VPC ID"
   value       = module.vpc.vpc_id
@@ -18,7 +19,3 @@ output "sandbox_security_group_id" {
   value       = aws_security_group.sandbox.id
 }
 
-output "nat_gateway_ids" {
-  description = "NAT Gateway IDs"
-  value       = module.vpc.natgw_ids
-}

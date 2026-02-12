@@ -1,36 +1,61 @@
+
 # Terraform AWS Sandbox Infrastructure
 
-This repository contains a modular Terraform setup for deploying a sandbox AWS environment, including VPC, EC2, and S3 resources. It is designed for learning, experimentation, or as a starting point for new projects.
+This repository contains a split-root Terraform setup for deploying a sandbox AWS environment, including VPC, EC2, and S3 resources. It is designed for learning, experimentation, or as a starting point for new projects.
 
 ## Structure
 
-- **main.tf**: Root configuration, wiring modules and passing variables.
-- **variables.tf**: All input variables for the root module.
-- **outputs.tf**: Root outputs for key resources.
-- **providers.tf**: Provider configuration (Stockholm region).
-- **locals.tf**: Local values for project-wide tags and naming.
-- **data.tf**: Data sources (e.g., latest Ubuntu AMI).
-- **s3.tf**: S3 module instantiation.
-- **cloudformation/bootstrap.yml**: CloudFormation template for GitHub OIDC and backend resources.
-- **.github/workflows/terraform-plan.yml**: GitHub Actions workflow for Terraform plan.
-- **terraform/modules/vpc/**: VPC module (uses terraform-aws-modules/vpc/aws), creates VPC, subnets, and a security group for SSH.
-- **terraform/modules/ec2/**: EC2 module, launches an instance in the VPC/subnet, attaches IAM roles and EBS volume.
-- **terraform/modules/s3/**: S3 module, creates a secure, versioned S3 bucket.
+```
+terraform-sandbox/
+├── vpc/           # Root config for VPC/networking (separate state)
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   └── backend.tf
+│
+├── infra/         # Root config for EC2, S3, etc. (separate state)
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   └── backend.tf
+│
+├── terraform/
+│   └── modules/
+│       ├── ec2/
+│       └── s3/
+│
+├── cloudformation/
+│   └── bootstrap.yml
+│
+├── .github/
+│   └── workflows/
+│       └── terraform-plan.yml
+│
+└── README.md
+```
+
+## State Management
+
+- **VPC and infra have separate state files** using S3 backends, with dynamic bucket names based on your AWS account and region.
+- The infra stack uses `terraform_remote_state` to read outputs from the VPC stack.
 
 ## Usage
 
 1. **Configure AWS Credentials**
    - Use environment variables or your preferred method. No secrets are stored in this repo.
 
-2. **Initialize Terraform**
+2. **Initialize Terraform in each root folder**
    ```sh
-   terraform init
+   cd vpc && terraform init
+   cd ../infra && terraform init
    ```
 
 3. **Plan and Apply**
    ```sh
-   terraform plan -var-file="environment/sandbox.tfvars"
-   terraform apply -var-file="environment/sandbox.tfvars"
+   cd vpc && terraform apply
+   cd ../infra && terraform apply
    ```
 
 ## Security
@@ -40,24 +65,14 @@ This repository contains a modular Terraform setup for deploying a sandbox AWS e
 
 ## Modules
 
-### VPC Module (`terraform/modules/vpc`)
-- Uses the official terraform-aws-modules/vpc/aws module.
-- Creates VPC, public/private subnets, NAT gateway, and a security group allowing SSH (port 22).
-- Outputs: `vpc_id`, `public_subnets`, `private_subnets`, `sandbox_security_group_id`.
-
-### EC2 Module (`terraform/modules/ec2`)
-- Launches an EC2 instance in the private subnet.
-- Attaches IAM role and EBS volume.
-- Uses variables for AMI, instance type, subnet, and security group.
-
-### S3 Module (`terraform/modules/s3`)
-- Creates a versioned, encrypted S3 bucket with restricted public access.
+- Modules are stored in `terraform/modules/` and can be referenced from both vpc and infra root modules.
+- Example modules: `ec2`, `s3`.
 
 ## CloudFormation
 - `cloudformation/bootstrap.yml` provisions OIDC provider, IAM roles, S3 backend, and DynamoDB lock table for Terraform state.
 
 ## CI/CD
-- `.github/workflows/terraform-plan.yml` runs Terraform plan on PRs/branches.
+- `.github/workflows/terraform-plan.yml` runs Terraform plan on PRs/branches, using dynamic backend config from CloudFormation outputs.
 
 ## Notes
 - Region is set to `eu-north-1` (Stockholm).
