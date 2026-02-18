@@ -33,7 +33,7 @@ inputs:
     default: 'eu-north-1'
     required: true
   target_resources:
-    description: 'Target specific resources (comma-separated) for destroy operations'
+    description: 'Target specific resources'
     required: false
 
 outputs:
@@ -79,12 +79,6 @@ runs:
       shell: bash
       run: terraform init -input=false -backend-config=./backend.conf
 
-    - name: Terraform Format Check
-      working-directory: ${{ inputs.tf_working_dir }}
-      shell: bash
-      if: ${{ inputs.terraform_action == 'plan' }}
-      run: terraform fmt -check
-
     - name: Terraform Validate
       id: validate
       working-directory: ${{ inputs.tf_working_dir }}
@@ -101,59 +95,4 @@ runs:
         env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
         terraform plan -var-file="$env_input" -input=false -detailed-exitcode
 
-    - name: Terraform Plan Destroy
-      id: plan_destroy
-      working-directory: ${{ inputs.tf_working_dir }}
-      shell: bash
-      if: ${{ inputs.terraform_action == 'plan-destroy' }}
-      run: |
-        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
-        
-        # Build target arguments if specific resources are provided
-        target_args=""
-        if [ -n "${{ inputs.target_resources }}" ]; then
-          IFS=',' read -ra RESOURCES <<< "${{ inputs.target_resources }}"
-          for resource in "${RESOURCES[@]}"; do
-            resource=$(echo "$resource" | xargs)
-            target_args="$target_args -target=$resource"
-          done
-        fi
-        
-        if [ -n "$target_args" ]; then
-          terraform plan -destroy -var-file="$env_input" -input=false -detailed-exitcode $target_args
-        else
-          terraform plan -destroy -var-file="$env_input" -input=false -detailed-exitcode
-        fi
-
-    - name: Terraform Apply
-      id: apply
-      working-directory: ${{ inputs.tf_working_dir }}
-      shell: bash
-      if: ${{ inputs.terraform_action == 'apply' }}
-      run: |
-        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
-        terraform apply -var-file="$env_input" -input=false -auto-approve
-
-    - name: Terraform Destroy
-      id: destroy
-      working-directory: ${{ inputs.tf_working_dir }}
-      shell: bash
-      if: ${{ inputs.terraform_action == 'destroy' }}
-      run: |
-        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
-        
-        # Build target arguments if specific resources are provided
-        target_args=""
-        if [ -n "${{ inputs.target_resources }}" ]; then
-          IFS=',' read -ra RESOURCES <<< "${{ inputs.target_resources }}"
-          for resource in "${RESOURCES[@]}"; do
-            resource=$(echo "$resource" | xargs)
-            target_args="$target_args -target=$resource"
-          done
-        fi
-        
-        if [ -n "$target_args" ]; then
-          terraform destroy -var-file="$env_input" -input=false -auto-approve $target_args
-        else
-          terraform destroy -var-file="$env_input" -input=false -auto-approve
-        fi
+    
