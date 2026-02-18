@@ -1,0 +1,159 @@
+name: Terraform Runs
+description: Composite action for Terraform plan and apply operations
+inputs:
+  terraform_version:
+    description: 'Terraform Version'
+    default: '~1.7.0'
+    required: true
+  tfstate_file:
+    description: 'State-file name'
+    required: true
+  tf_working_dir:
+    description: 'TF working directory'
+    required: true
+  aws_oidc_role:
+    description: 'AWS OIDC role ARN'
+    required: true
+  terraform_action:
+    description: 'TF Action - plan, apply, plan-destroy, or destroy'
+    default: 'plan'
+    required: true
+  environment:
+    description: 'Deployment Environment'
+    default: 'sandbox'
+    required: true
+  lock_id:
+    description: 'Terraform lock ID. Use for unlocking'
+    required: false
+  account_id:
+    description: 'AWS account ID'
+    required: true
+  region:
+    description: 'AWS Region'
+    default: 'eu-north-1'
+    required: true
+  target_resources:
+    description: 'Target specific resources (comma-separated) for destroy operations'
+    required: false
+
+outputs:
+  terraform_plan_exitcode:
+    description: "Plan exit code"
+    value: ${{ steps.plan.outputs.exitcode }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.region }}
+        role-to-assume: ${{ inputs.aws_oidc_role }}
+        role-session-name: TerraformJob
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}
+
+    - name: Create Terraform Backend Config
+      id: backend
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      run: |
+        cat > backend.conf << EOF
+        bucket="fincra3-${{ inputs.account_id }}-${{ inputs.region }}-tfstate"
+        dynamodb_table="fincra3-${{ inputs.account_id }}-${{ inputs.region }}-lock-table"
+        key="${{ inputs.tfstate_file }}"
+        EOF
+
+    - name: Terraform Force Unlock (if lock_id provided)
+      if: ${{ inputs.lock_id != '' }}
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      run: terraform force-unlock -force ${{ inputs.lock_id }}
+
+    - name: Terraform Init
+      id: init
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      run: terraform init -input=false -backend-config=./backend.conf
+
+    - name: Terraform Format Check
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'plan' }}
+      run: terraform fmt -check
+
+    - name: Terraform Validate
+      id: validate
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'plan' }}
+      run: terraform validate -no-color
+
+    - name: Terraform Plan
+      id: plan
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'plan' }}
+      run: |
+        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        terraform plan -var-file="$env_input" -input=false -detailed-exitcode
+
+    - name: Terraform Plan Destroy
+      id: plan_destroy
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'plan-destroy' }}
+      run: |
+        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        
+        # Build target arguments if specific resources are provided
+        target_args=""
+        if [ -n "${{ inputs.target_resources }}" ]; then
+          IFS=',' read -ra RESOURCES <<< "${{ inputs.target_resources }}"
+          for resource in "${RESOURCES[@]}"; do
+            resource=$(echo "$resource" | xargs)
+            target_args="$target_args -target=$resource"
+          done
+        fi
+        
+        if [ -n "$target_args" ]; then
+          terraform plan -destroy -var-file="$env_input" -input=false -detailed-exitcode $target_args
+        else
+          terraform plan -destroy -var-file="$env_input" -input=false -detailed-exitcode
+        fi
+
+    - name: Terraform Apply
+      id: apply
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'apply' }}
+      run: |
+        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        terraform apply -var-file="$env_input" -input=false -auto-approve
+
+    - name: Terraform Destroy
+      id: destroy
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'destroy' }}
+      run: |
+        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        
+        # Build target arguments if specific resources are provided
+        target_args=""
+        if [ -n "${{ inputs.target_resources }}" ]; then
+          IFS=',' read -ra RESOURCES <<< "${{ inputs.target_resources }}"
+          for resource in "${RESOURCES[@]}"; do
+            resource=$(echo "$resource" | xargs)
+            target_args="$target_args -target=$resource"
+          done
+        fi
+        
+        if [ -n "$target_args" ]; then
+          terraform destroy -var-file="$env_input" -input=false -auto-approve $target_args
+        else
+          terraform destroy -var-file="$env_input" -input=false -auto-approve
+        fi
