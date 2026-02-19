@@ -28,7 +28,7 @@ Resources:
             Condition:
               StringLike:
                 token.actions.githubusercontent.com:sub: [
-                    "repo:FincraNG/fincra-profile:*"
+                    "repo:FincraNG/terraform-sandbox:*",
                     ]
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser'
@@ -53,10 +53,14 @@ Resources:
             Condition:
               StringLike:
                 token.actions.githubusercontent.com:sub: [
-                    "repo:FincraNG/FincraNG/terraform-sandbox:*",
+                    "repo:FincraNG/terraform-sandbox:*",
                     ]
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonEC2FullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonVPCFullAccess'
+        - 'arn:aws:iam::aws:policy/IAMFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
       Path: /
       RoleName: fincra3-github-execution-role
       Tags:
@@ -123,3 +127,15 @@ Outputs:
     Value: !Ref GitHubOidc
     Export:
       Name: GitHubOidcProvider
+
+  GitHubExecutionRoleArn:
+    Description: ARN of the GitHub execution role for Terraform
+    Value: !GetAtt GitHubExecuteRole.Arn
+    Export:
+      Name: GitHubExecutionRoleArn
+
+  GitHubDeploymentRoleArn:
+    Description: ARN of the GitHub deployment role
+    Value: !GetAtt GitHubDeploymentRole.Arn
+    Export:
+      Name: GitHubDeploymentRoleArn
