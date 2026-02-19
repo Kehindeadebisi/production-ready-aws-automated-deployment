@@ -95,4 +95,11 @@ runs:
         env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
         terraform plan -var-file="$env_input" -input=false -detailed-exitcode
 
-    
+    - name: Terraform Apply
+      id: apply
+      working-directory: ${{ inputs.tf_working_dir }}
+      shell: bash
+      if: ${{ inputs.terraform_action == 'apply' }}
+      run: |
+        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        terraform apply -var-file="$env_input" -input=false -auto-approve

@@ -1,13 +1,14 @@
 name: Deploy CloudFormation Bootstrap
 
 on:
-  push:
-    branches:
-      - "main"
-      - "develop"
-    paths:
-      - "cloudformation/**"
-      - ".github/workflows/cloudformation-deploy.yml"
+  # Automatic triggers disabled - CloudFormation stack already created
+  # push:
+  #   branches:
+  #     - "main"
+  #     - "develop"
+  #   paths:
+  #     - "cloudformation/**"
+  #     - ".github/workflows/cloudformation-deploy.yml"
   workflow_dispatch:
     inputs:
       action:

@@ -7,6 +7,26 @@ on:
   pull_request:
     branches:
       - "develop"
+  workflow_dispatch:
+    inputs:
+      terraform_action:
+        description: 'Terraform action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'sandbox'
+        type: choice
+        options:
+          - sandbox
+          - dev
+          - staging
+          - prod
 
 
 jobs:
@@ -28,7 +48,7 @@ jobs:
           tfstate_file: vpc/terraform.tfstate
           tf_working_dir: vpc
           aws_oidc_role: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          terraform_action: plan
-          environment: sandbox
+          terraform_action: ${{ github.event.inputs.terraform_action || 'plan' }}
+          environment: ${{ github.event.inputs.environment || 'sandbox' }}
           account_id: ${{ secrets.AWS_ACCOUNT_ID }}
           region: eu-north-1
