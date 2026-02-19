@@ -1,4 +1,4 @@
-name: Deploy CloudFormation
+name: Deploy CloudFormation Bootstrap
 
 on:
   push:
@@ -10,14 +10,18 @@ on:
       - ".github/workflows/cloudformation-deploy.yml"
   workflow_dispatch:
     inputs:
+      action:
+        description: 'CloudFormation action'
+        required: true
+        default: 'create-or-update'
+        type: choice
+        options:
+          - create-or-update
+          - delete
       stack_name:
         description: 'CloudFormation stack name'
         required: true
         default: 'terraform-bootstrap'
-      template_file:
-        description: 'CloudFormation template file'
-        required: true
-        default: 'cloudformation/bootstrap.yml'
 
 jobs:
   deploy-cloudformation:
@@ -31,23 +35,94 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials (Method 1 - OIDC)
+        if: ${{ secrets.AWS_OIDC_ROLE_ARN != '' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: eu-north-1
 
-      - name: Deploy CloudFormation Stack
+      - name: Configure AWS credentials (Method 2 - Access Keys)
+        if: ${{ secrets.AWS_OIDC_ROLE_ARN == '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      - name: Validate CloudFormation template
         run: |
-          aws cloudformation deploy \
+          aws cloudformation validate-template \
+            --template-body file://cloudformation/bootstrap.yml
+
+      - name: Check if stack exists
+        if: github.event.inputs.action == 'create-or-update' || github.event.inputs.action == ''
+        id: stack_check
+        run: |
+          if aws cloudformation describe-stacks --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} >/dev/null 2>&1; then
+            echo "stack_exists=true" >> $GITHUB_OUTPUT
+            echo "Stack '${{ github.event.inputs.stack_name || 'terraform-bootstrap' }}' exists - will update"
+          else
+            echo "stack_exists=false" >> $GITHUB_OUTPUT
+            echo "Stack '${{ github.event.inputs.stack_name || 'terraform-bootstrap' }}' does not exist - will create"
+          fi
+
+      - name: Create CloudFormation Stack
+        if: (github.event.inputs.action == 'create-or-update' || github.event.inputs.action == '') && steps.stack_check.outputs.stack_exists == 'false'
+        run: |
+          echo "Creating CloudFormation stack..."
+          aws cloudformation create-stack \
             --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} \
-            --template-file ${{ github.event.inputs.template_file || 'cloudformation/bootstrap.yml' }} \
+            --template-body file://cloudformation/bootstrap.yml \
             --capabilities CAPABILITY_NAMED_IAM \
-            --no-fail-on-empty-changeset
+            --tags Key=Project,Value=fincra3 Key=Environment,Value=shared
+
+      - name: Update CloudFormation Stack
+        if: (github.event.inputs.action == 'create-or-update' || github.event.inputs.action == '') && steps.stack_check.outputs.stack_exists == 'true'
+        run: |
+          echo "Updating CloudFormation stack..."
+          aws cloudformation update-stack \
+            --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} \
+            --template-body file://cloudformation/bootstrap.yml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --tags Key=Project,Value=fincra3 Key=Environment,Value=shared \
+          || echo "No changes to deploy"
+
+      - name: Wait for stack completion
+        if: github.event.inputs.action == 'create-or-update' || github.event.inputs.action == ''
+        run: |
+          echo "Waiting for stack operation to complete..."
+          if [[ "${{ steps.stack_check.outputs.stack_exists }}" == "false" ]]; then
+            aws cloudformation wait stack-create-complete \
+              --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }}
+          else
+            aws cloudformation wait stack-update-complete \
+              --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} \
+            || echo "Stack update completed or no changes"
+          fi
+
+      - name: Delete CloudFormation Stack
+        if: github.event.inputs.action == 'delete'
+        run: |
+          echo "Deleting CloudFormation stack..."
+          aws cloudformation delete-stack \
+            --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }}
+          
+          echo "Waiting for stack deletion to complete..."
+          aws cloudformation wait stack-delete-complete \
+            --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }}
 
       - name: Get Stack Outputs
+        if: github.event.inputs.action == 'create-or-update' || github.event.inputs.action == ''
         run: |
+          echo "=== CloudFormation Stack Outputs ==="
           aws cloudformation describe-stacks \
             --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} \
             --query 'Stacks[0].Outputs' \
             --output table
+          
+          echo ""
+          echo "=== Next Steps ==="
+          echo "1. The S3 bucket and DynamoDB table are now created"
+          echo "2. Your Terraform workflows can now run successfully"
+          echo "3. Bucket name: fincra3-$(aws sts get-caller-identity --query Account --output text)-eu-north-1-tfstate"
