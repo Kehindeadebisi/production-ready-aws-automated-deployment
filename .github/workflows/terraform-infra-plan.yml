@@ -1,34 +1,34 @@
-# name: Infra Terraform Plan
+name: Infra Terraform Plan
 
-# on:
-#   push:
-#     branches:
-#       - "feature/**"
-#   pull_request:
-#     branches:
-#       - "develop"
+on:
+  push:
+    branches:
+      - "feature/**"
+  pull_request:
+    branches:
+      - "develop"
 
 
-# jobs:
-#   terraform-plan:
-#     runs-on: ubuntu-latest
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
 
-#     permissions:
-#       id-token: write
-#       contents: read
+    permissions:
+      id-token: write
+      contents: read
 
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-#       - name: Run Terraform Operations
-#         uses: ./.github/actions/terraform-runs
-#         with:
-#           terraform_version: "~1.7.0"
-#           tfstate_file: infra/terraform.tfstate
-#           tf_working_dir: infra
-#           aws_oidc_role: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-#           terraform_action: plan
-#           environment: sandbox
-#           account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-#           region: eu-north-1
+      - name: Run Terraform Operations
+        uses: ./.github/actions/terraform-runs
+        with:
+          terraform_version: "~1.7.0"
+          tfstate_file: infra/terraform.tfstate
+          tf_working_dir: infra
+          aws_oidc_role: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          terraform_action: plan
+          environment: sandbox
+          account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          region: eu-north-1
