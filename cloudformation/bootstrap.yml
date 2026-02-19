@@ -1,74 +1,7 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  An IAM Identity Provider to enable deployments from GitHub Action Runners using the GitHub OIDC Provider
+  S3 bucket and DynamoDB table for Terraform state management
 Resources:
-  GitHubOidc:
-    Type: AWS::IAM::OIDCProvider
-    Properties:
-      Url: https://token.actions.githubusercontent.com
-      ClientIdList:
-        - sts.amazonaws.com
-      ThumbprintList:
-        - 6938fd4d98bab03faadb97b34396831e3780aea1
-        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
-      Tags:
-        - Key: "project"
-          Value: "fincra3"
-
-  GitHubDeploymentRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRoleWithWebIdentity
-            Principal:
-              Federated: !Ref GitHubOidc
-            Condition:
-              StringLike:
-                token.actions.githubusercontent.com:sub: [
-                    "repo:FincraNG/terraform-sandbox:*",
-                    ]
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser'
-      Path: /
-      RoleName: fincra3-github-deployment-role
-      Tags:
-        - Key: "deployer"
-          Value: "org"
-        - Key: "project"
-          Value: "fincra3"
-
-  GitHubExecuteRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRoleWithWebIdentity
-            Principal:
-              Federated: !Ref GitHubOidc
-            Condition:
-              StringLike:
-                token.actions.githubusercontent.com:sub: [
-                    "repo:FincraNG/terraform-sandbox:*",
-                    ]
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'
-        - 'arn:aws:iam::aws:policy/AmazonEC2FullAccess'
-        - 'arn:aws:iam::aws:policy/AmazonVPCFullAccess'
-        - 'arn:aws:iam::aws:policy/IAMFullAccess'
-        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
-      Path: /
-      RoleName: fincra3-github-execution-role
-      Tags:
-        - Key: "deployer"
-          Value: "org"
-        - Key: "project"
-          Value: "fincra3"
-
   TerraformS3:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -122,20 +55,14 @@ Resources:
           Value: "fincra3"
 
 Outputs:
-  GitHubOIDCProvider:
-    Description: The GitHub OIDC Provider
-    Value: !Ref GitHubOidc
+  TerraformS3Bucket:
+    Description: S3 bucket for Terraform state
+    Value: !Ref TerraformS3
     Export:
-      Name: GitHubOidcProvider
-
-  GitHubExecutionRoleArn:
-    Description: ARN of the GitHub execution role for Terraform
-    Value: !GetAtt GitHubExecuteRole.Arn
+      Name: TerraformS3Bucket
+      
+  DynamoDbLockTable:
+    Description: DynamoDB table for Terraform state locking
+    Value: !Ref DynamoDbTable
     Export:
-      Name: GitHubExecutionRoleArn
-
-  GitHubDeploymentRoleArn:
-    Description: ARN of the GitHub deployment role
-    Value: !GetAtt GitHubDeploymentRole.Arn
-    Export:
-      Name: GitHubDeploymentRoleArn
+      Name: DynamoDbLockTable

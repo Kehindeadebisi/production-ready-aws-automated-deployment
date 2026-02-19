@@ -1,0 +1,53 @@
+name: Deploy CloudFormation
+
+on:
+  push:
+    branches:
+      - "main"
+      - "develop"
+    paths:
+      - "cloudformation/**"
+      - ".github/workflows/cloudformation-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      stack_name:
+        description: 'CloudFormation stack name'
+        required: true
+        default: 'terraform-bootstrap'
+      template_file:
+        description: 'CloudFormation template file'
+        required: true
+        default: 'cloudformation/bootstrap.yml'
+
+jobs:
+  deploy-cloudformation:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: eu-north-1
+
+      - name: Deploy CloudFormation Stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} \
+            --template-file ${{ github.event.inputs.template_file || 'cloudformation/bootstrap.yml' }} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
+      - name: Get Stack Outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name ${{ github.event.inputs.stack_name || 'terraform-bootstrap' }} \
+            --query 'Stacks[0].Outputs' \
+            --output table
