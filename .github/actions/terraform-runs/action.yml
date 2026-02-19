@@ -77,6 +77,8 @@ runs:
       id: init
       working-directory: ${{ inputs.tf_working_dir }}
       shell: bash
+      env:
+        TF_VAR_aws_account_id: ${{ inputs.account_id }}
       run: terraform init -input=false -backend-config=./backend.conf
 
     - name: Terraform Validate
@@ -84,6 +86,8 @@ runs:
       working-directory: ${{ inputs.tf_working_dir }}
       shell: bash
       if: ${{ inputs.terraform_action == 'plan' }}
+      env:
+        TF_VAR_aws_account_id: ${{ inputs.account_id }}
       run: terraform validate -no-color
 
     - name: Terraform Plan
@@ -91,6 +95,8 @@ runs:
       working-directory: ${{ inputs.tf_working_dir }}
       shell: bash
       if: ${{ inputs.terraform_action == 'plan' }}
+      env:
+        TF_VAR_aws_account_id: ${{ inputs.account_id }}
       run: |
         env_input="${{ github.workspace }}/terraform/environment/${{ inputs.environment }}.tfvars"
         terraform plan -var-file="$env_input" -input=false -detailed-exitcode
@@ -100,6 +106,8 @@ runs:
       working-directory: ${{ inputs.tf_working_dir }}
       shell: bash
       if: ${{ inputs.terraform_action == 'apply' }}
+      env:
+        TF_VAR_aws_account_id: ${{ inputs.account_id }}
       run: |
         env_input="${{ github.workspace }}/terraform/environment/${{ inputs.environment }}.tfvars"
         terraform apply -var-file="$env_input" -input=false -auto-approve
