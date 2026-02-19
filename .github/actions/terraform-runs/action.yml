@@ -92,7 +92,7 @@ runs:
       shell: bash
       if: ${{ inputs.terraform_action == 'plan' }}
       run: |
-        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        env_input="${{ github.workspace }}/terraform/environment/${{ inputs.environment }}.tfvars"
         terraform plan -var-file="$env_input" -input=false -detailed-exitcode
 
     - name: Terraform Apply
@@ -101,5 +101,5 @@ runs:
       shell: bash
       if: ${{ inputs.terraform_action == 'apply' }}
       run: |
-        env_input="../terraform/environment/${{ inputs.environment }}.tfvars"
+        env_input="${{ github.workspace }}/terraform/environment/${{ inputs.environment }}.tfvars"
         terraform apply -var-file="$env_input" -input=false -auto-approve
