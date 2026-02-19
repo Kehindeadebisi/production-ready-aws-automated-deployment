@@ -4,15 +4,9 @@ on:
   push:
     branches:
       - "feature/**"
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform-infra-plan.yml"
   pull_request:
     branches:
       - "develop"
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform-infra-plan.yml"
 
 
 jobs:
