@@ -124,19 +124,6 @@ The CI/CD pipelines leverage GitHub Actions for full automation, ensuring repeat
 
 Automation reduces manual toil, ensures consistency, and supports rapid iterations in a production environment.
 
-## Validation Commands
-Run these commands locally to confirm Terraform code formatting and validation across the project:
-
-```bash
-cd vpc && terraform fmt -recursive && terraform validate
-cd ../infra && terraform fmt -recursive && terraform validate
-```
-
-If you add or modify module code, also run:
-
-```bash
-cd terraform/modules/ecs && terraform fmt -recursive
-```
 
 ## Notes
 - Region is configurable via variables (default: us-east-1).
