@@ -30,7 +30,7 @@ inputs:
     required: true
   region:
     description: 'AWS Region'
-    default: 'eu-north-1'
+    default: 'us-east-1'
     required: true
   target_resources:
     description: 'Target specific resources'
@@ -62,8 +62,8 @@ runs:
       shell: bash
       run: |
         cat > backend.conf << EOF
-        bucket="fincra3-${{ inputs.account_id }}-${{ inputs.region }}-tfstate"
-        dynamodb_table="fincra3-${{ inputs.account_id }}-${{ inputs.region }}-lock-table"
+        bucket="devops-challenge-${{ inputs.account_id }}-${{ inputs.region }}-tfstate"
+        dynamodb_table="devops-challenge-${{ inputs.account_id }}-${{ inputs.region }}-lock-table"
         key="${{ inputs.tfstate_file }}"
         EOF
 
@@ -79,6 +79,8 @@ runs:
       shell: bash
       env:
         TF_VAR_aws_account_id: ${{ inputs.account_id }}
+        TF_VAR_aws_region: ${{ inputs.region }}
+        TF_VAR_environment: ${{ inputs.environment }}
       run: terraform init -input=false -backend-config=./backend.conf
 
     - name: Terraform Validate
@@ -88,6 +90,8 @@ runs:
       if: ${{ inputs.terraform_action == 'plan' }}
       env:
         TF_VAR_aws_account_id: ${{ inputs.account_id }}
+        TF_VAR_aws_region: ${{ inputs.region }}
+        TF_VAR_environment: ${{ inputs.environment }}
       run: terraform validate -no-color
 
     - name: Terraform Plan
@@ -97,6 +101,8 @@ runs:
       if: ${{ inputs.terraform_action == 'plan' }}
       env:
         TF_VAR_aws_account_id: ${{ inputs.account_id }}
+        TF_VAR_aws_region: ${{ inputs.region }}
+        TF_VAR_environment: ${{ inputs.environment }}
       run: |
         env_input="${{ github.workspace }}/terraform/environment/${{ inputs.environment }}.tfvars"
         terraform plan -var-file="$env_input" -input=false -detailed-exitcode
@@ -108,6 +114,8 @@ runs:
       if: ${{ inputs.terraform_action == 'apply' }}
       env:
         TF_VAR_aws_account_id: ${{ inputs.account_id }}
+        TF_VAR_aws_region: ${{ inputs.region }}
+        TF_VAR_environment: ${{ inputs.environment }}
       run: |
         env_input="${{ github.workspace }}/terraform/environment/${{ inputs.environment }}.tfvars"
         terraform apply -var-file="$env_input" -input=false -auto-approve

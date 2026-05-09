@@ -6,7 +6,7 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     Properties:
-      BucketName: !Sub fincra3-${AWS::AccountId}-${AWS::Region}-tfstate
+      BucketName: !Sub devops-challenge-${AWS::AccountId}-${AWS::Region}-tfstate
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
@@ -19,7 +19,7 @@ Resources:
         Status: "Enabled"
       Tags:
         - Key: "project"
-          Value: "fincra3"
+          Value: "devops-challenge"
 
   TerraformS3BucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -42,7 +42,7 @@ Resources:
   DynamoDbTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub fincra3-${AWS::AccountId}-${AWS::Region}-lock-table
+      TableName: !Sub devops-challenge-${AWS::AccountId}-${AWS::Region}-lock-table
       AttributeDefinitions:
         - AttributeName: LockID
           AttributeType: S
@@ -52,7 +52,7 @@ Resources:
       BillingMode: PAY_PER_REQUEST
       Tags:
         - Key: "project"
-          Value: "fincra3"
+          Value: "devops-challenge"
 
 Outputs:
   TerraformS3Bucket:

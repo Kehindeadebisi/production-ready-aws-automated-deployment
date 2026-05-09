@@ -20,7 +20,7 @@ variable "ami_id" {
 variable "project_name" {
   description = "Project name for resource naming."
   type        = string
-  default     = "fincra"
+  default     = "devops-challenge"
 }
 
 variable "common_tags" {

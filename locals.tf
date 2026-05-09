@@ -1,5 +1,5 @@
 locals {
-    project_name="fincra"
+    project_name="devops-challenge"
   common_tags = {
     Environment = var.environment
     managedBy   = "terraform"

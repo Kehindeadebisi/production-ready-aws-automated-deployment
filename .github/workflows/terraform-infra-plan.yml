@@ -51,4 +51,4 @@ jobs:
           terraform_action: ${{ github.event.inputs.terraform_action || 'plan' }}
           environment: ${{ github.event.inputs.environment || 'sandbox' }}
           account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-          region: eu-north-1
+          region: ${{ vars.AWS_REGION || 'us-east-1' }}

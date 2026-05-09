@@ -2,12 +2,11 @@ variable "aws_account_id" {
   description = "The AWS Account ID used for backend bucket naming."
   type        = string
 }
-variable "ami_id" {
-  description = "AMI ID for the EC2 instance."
+variable "aws_region" {
+  description = "The AWS region for deployment."
   type        = string
+  default     = "us-east-1"
 }
-
-
 variable "environment" {
   description = "The deployment environment"
   type        = string
@@ -21,14 +20,8 @@ variable "common_tags" {
   }
 }
 
-variable "instance_type" {
-  description = "EC2 instance type"
+variable "project_name" {
+  description = "The name of the project."
   type        = string
-  default     = "t3.nano"
-}
-
-variable "root_volume_size" {
-  description = "Root EBS volume size (GiB)"
-  type        = number
-  default     = 8
+  default     = "devops-challenge"
 }

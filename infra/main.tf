@@ -1,28 +1,37 @@
 data "terraform_remote_state" "vpc" {
   backend = "s3"
   config = {
-    bucket = "fincra3-${var.aws_account_id}-eu-north-1-tfstate"
+    bucket = "devops-challenge-${var.aws_account_id}-${var.aws_region}-tfstate"
     key    = "vpc/terraform.tfstate"
-    region = "eu-north-1"
+    region = var.aws_region
   }
 }
 
-module "ec2" {
-  source = "../terraform/modules/ec2"
-  vpc_id = data.terraform_remote_state.vpc.outputs.vpc_id
-  private_subnet_id = data.terraform_remote_state.vpc.outputs.private_subnets[0]
-  sandbox_security_group_id = data.terraform_remote_state.vpc.outputs.sandbox_security_group_id
-  ami_id = var.ami_id
-  instance_type = var.instance_type
-  root_volume_size = var.root_volume_size
+# Use try() function to provide defaults when VPC state doesn't exist
+locals {
+  vpc_id                    = try(data.terraform_remote_state.vpc.outputs.vpc_id, "vpc-placeholder")
+  private_subnets           = try(data.terraform_remote_state.vpc.outputs.private_subnets, [])
+  public_subnets            = try(data.terraform_remote_state.vpc.outputs.public_subnets, [])
+  alb_security_group_id     = try(data.terraform_remote_state.vpc.outputs.alb_security_group_id, "sg-placeholder")
+  ecs_security_group_id     = try(data.terraform_remote_state.vpc.outputs.ecs_security_group_id, "sg-placeholder")
+}
+
+module "ecs" {
+  source = "../terraform/modules/ecs"
+  vpc_id = local.vpc_id
+  private_subnets = local.private_subnets
+  public_subnets = local.public_subnets
+  alb_security_group_id = local.alb_security_group_id
+  ecs_security_group_id = local.ecs_security_group_id
   environment = var.environment
+  project_name = var.project_name
   common_tags = var.common_tags
-  project_name = "var.project_name"
+  aws_region = var.aws_region
 }
 
 module "s3" {
   source = "../terraform/modules/s3"
   environment = var.environment
-  project_name = "fincra"
+  project_name = var.project_name
   common_tags  = var.common_tags
 }
