@@ -87,11 +87,6 @@ terraform-deploy/
 - **Region Configurability**: Variables allow easy region changes, avoiding hardcoding for flexibility.
 - **No External Tools**: Kept everything within AWS and GitHub to minimize dependencies and simplify evaluation.
 
-## Assumptions
-
-- Default region: us-east-1 (configurable).
-- Basic app: Simple Node.js server; scale as needed.
-- Security: OIDC for AWS access; no hardcoded secrets.
 
 ## Improvements
 
@@ -102,7 +97,7 @@ terraform-deploy/
 Posible future improvements include adding more comprehensive service-level tests, enhanced security hardening, and multi-region deployment support.
 
 ## Security
-- **No secrets or sensitive values are stored in this repository.**
+- **No secrets or sensitive values are hardcoded or stored in this repository.**
 - All secrets (AWS credentials, OIDC role ARNs, etc.) must be provided via environment variables or CI/CD secrets store.
 - The .gitignore excludes tfstate, tfvars, and other sensitive/ephemeral files.
 
